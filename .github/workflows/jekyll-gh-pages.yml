@@ -1,0 +1,57 @@
+name: Build & Deploy Jekyll to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1 ⬇️  Get your repo
+      - uses: actions/checkout@v4
+
+      # 2 ⬇️  Install Ruby + Bundler and cache gems
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
+
+      # 3 ⬇️  (Optional) Install Jekyll if you have no Gemfile
+      # - run: gem install jekyll --no-document
+
+      # 4 ⬇️  Configure the GitHub Pages environment variables
+      - id: pages
+        uses: actions/configure-pages@v5
+
+      # 5 ⬇️  Build the site into ./_site
+      - name: Build with Jekyll
+        env:
+          JEKYLL_ENV: production
+        run: bundle exec jekyll build --baseurl "${{ steps.pages.outputs.base_path }}"
+
+      # 6 ⬇️  Package that _site folder as an artifact
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./_site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
